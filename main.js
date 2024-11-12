@@ -172,13 +172,13 @@ function displayItems(items) {
   firstHundredItems.forEach(item => {
     let merchant = findMerchant(item.attributes.merchant_id).attributes.name
     itemsView.innerHTML += `
-     <article class="item" id="item-${item.id}">
-          <img src="" alt="">
-          <h2>${item.attributes.name}</h2>
-          <p>${item.attributes.description}</p>
-          <p>$${item.attributes.unit_price}</p>
-          <p class="merchant-name-in-item">Merchant: ${merchant}</p>
-        </article>
+      <article class="item" id="item-${item.id}">
+        <img src="" alt="">
+        <h2>${item.attributes.name}</h2>
+        <p>${item.attributes.description}</p>
+        <p>$${item.attributes.unit_price}</p>
+        <p class="merchant-name-in-item">Merchant: ${merchant}</p>
+      </article>
     `
   })
 }
@@ -236,20 +236,58 @@ function getMerchantCoupons(event) {
   let merchantId = event.target.closest("article").id.split('-')[1]
   console.log("Merchant ID:", merchantId)
 
-  fetchData(`merchants/${merchantId}`)
+  fetchData(`merchants/${merchantId}/coupons`)
   .then(couponData => {
     console.log("Coupon data from fetch:", couponData)
-    displayMerchantCoupons(couponData);
+    displayMerchantCoupons(couponData.data, merchantId);
   })
 }
 
-function displayMerchantCoupons(coupons) {
+function displayMerchantCoupons(coupons, merchantId) {
   show([couponsView])
-  hide([merchantsView, itemsView])
+  hide([merchantsView, itemsView, addNewButton])
+  
+  showingText.innerText = `All Coupons for Merchant #${merchantId}`
 
-  couponsView.innerHTML = `
-    <p>Coupon data will go here.</p>
-  `
+  const activeCoupons = coupons.filter(coupon => coupon.attributes.status === "active")
+
+  if (activeCoupons.length === 0) {
+    couponsView.innerHTML = `<p>Merchant has no available coupons</p>`
+  }else{
+    couponsView.innerHTML = activeCoupons.map(coupon => {
+      const { name, code, discount_type, discount_value } = coupon.attributes
+      let discountFormat = discount_value
+      if (discount_type === 'dollar_off') {
+        discountFormat = `$${discount_value}0`        
+      }else if (discount_type === 'percent_off') {
+        discountFormat = `${discount_value}%`
+      }
+      return `
+        <article class="coupon" id="coupon-${coupon.id}" data-code="${code}">
+          <h3 class="coupon-title">${name}</h3>
+          <p class="coupon-code">Discount Code: ${code}</p>
+          <p class="coupon-amount">Discount Amount: ${discountFormat}</p>
+        </article>
+        `;
+    }).join('')
+
+    const couponElements = document.querySelectorAll('.coupon')
+
+
+    couponElements.forEach(couponElement => {
+      couponElement.addEventListener('click', () => {
+        const code = couponElement.getAttribute('data-code')
+        couponElement.classList.add('coupon-clicked')
+        setTimeout(() => {
+          couponElement.classList.remove('coupon-clicked')
+        }, 100)
+        navigator.clipboard.writeText(code)
+        .then(() => {
+          alert('Coupon code "${code}" copied to clipboard')
+        })
+      })
+    })
+  }
 }
 
 //Helper Functions
